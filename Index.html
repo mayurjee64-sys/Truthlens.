@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TruthLens – See the truth behind every claim.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       CSS Variables & Reset
+    ============================================================ */
+    :root {
+      --blue-deep:   #0d2045;
+      --blue-dark:   #1a3a6e;
+      --blue-mid:    #1e4d99;
+      --blue-bright: #2563eb;
+      --blue-light:  #4a9eff;
+      --blue-pale:   #dbeafe;
+      --blue-bg:     #f0f6ff;
+      --green:       #22c55e;
+      --green-dark:  #16a34a;
+      --amber:       #f59e0b;
+      --red:         #ef4444;
+      --gray-soft:   #f8fafc;
+      --gray-border: #e2e8f0;
+      --text-main:   #0f172a;
+      --text-muted:  #64748b;
+      --white:       #ffffff;
+      --radius-lg:   18px;
+      --radius-md:   12px;
+      --radius-sm:   8px;
+      --shadow-card: 0 4px 24px rgba(37,99,235,0.10);
+      --shadow-hover:0 8px 36px rgba(37,99,235,0.18);
+      --transition:  0.22s cubic-bezier(0.4,0,0.2,1);
+      --font-display:'Sora', sans-serif;
+      --font-body:   'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--blue-bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%; height: 64px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--gray-border);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-truth { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: var(--blue-dark); }
+    .logo-lens  { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: #4caf50; }
+
+    /* API Key pill in header */
+    .api-status {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--white); border: 1.5px solid var(--gray-border);
+      border-radius: 50px; padding: 6px 16px;
+      font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .api-status:hover { border-color: var(--blue-bright); color: var(--blue-bright); }
+    .api-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+    .api-dot.connected { background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+
+    /* ============================================================
+       API KEY MODAL
+    ============================================================ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(13,32,69,0.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg);
+      padding: 36px 32px; max-width: 440px; width: 92%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(24px); opacity:0; }
+      to   { transform: translateY(0);    opacity:1; }
+    }
+    .modal h2 {
+      font-family: var(--font-display); font-size: 1.3rem; font-weight: 800;
+      color: var(--blue-deep); margin-bottom: 8px;
+    }
+    .modal p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+    .modal p a { color: var(--blue-bright); }
+
+    .modal-input {
+      width: 100%; border: 1.5px solid var(--gray-border); border-radius: var(--radius-md);
+      padding: 12px 16px; font-family: var(--font-body); font-size: 0.95rem;
+      outline: none; margin-bottom: 8px; background: var(--gray-soft);
+      transition: border var(--transition);
+    }
+    .modal-input:focus { border-color: var(--blue-bright); background: var(--white); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .modal-hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 20px; }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel {
+      background: none; border: 1.5px solid var(--gray-border); color: var(--text-muted);
+      padding: 10px 22px; border-radius: 50px; cursor: pointer; font-size: 0.9rem;
+      transition: all var(--transition);
+    }
+    .btn-cancel:hover { border-color: var(--red); color: var(--red); }
+    .btn-save {
+      background: linear-gradient(135deg, var(--blue-bright), var(--blue-mid));
+      color: var(--white); border: none; padding: 10px 26px; border-radius: 50px;
+      cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.28); transition: all var(--transition);
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.38); }
+
+    /* ============================================================
+       HERO
+    ============================================================ */
+    .hero {
+      min-height: 100vh; padding: 120px 5% 80px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.35; pointer-events: none; }
+    .blob-1 { width: 500px; height: 500px; background: radial-gradient(circle, #2563eb 0%, transparent 70%); top: -100px; right: -120px; animation: floatBlob 8s ease-in-out infinite alternate; }
+    .blob-2 { width: 360px; height: 360px; background: radial-gradient(circle, #4a9eff 0%, transparent 70%); bottom: 0; left: -80px; animation: floatBlob 10s ease-in-out infinite alternate-reverse; }
+    .blob-3 { width: 240px; height: 240px; background: radial-gradient(circle, #22c55e 0%, transparent 70%); top: 40%; left: 50%; opacity: 0.15; animation: floatBlob 12s ease-in-out infinite alternate; }
+    @keyframes floatBlob { from { transform: translateY(0) scale(1); } to { transform: translateY(28px) scale(1.06); } }
+
+    .hero-content { max-width: 700px; width: 100%; position: relative; z-index: 2; animation: fadeUp 0.7s ease both; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(28px); } to { opacity:1; transform: translateY(0); } }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--white); border: 1px solid var(--blue-pale);
+      border-radius: 50px; padding: 6px 18px;
+      font-size: 0.82rem; font-weight: 600; color: var(--blue-bright);
+      margin-bottom: 22px; box-shadow: 0 2px 10px rgba(37,99,235,0.08);
+    }
+    .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+
+    .hero-title {
+      font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 800; line-height: 1.1; color: var(--blue-deep); margin-bottom: 18px;
+    }
+    .highlight { color: var(--blue-bright); position: relative; }
+    .highlight::after {
+      content: ''; position: absolute; bottom: 4px; left: 0; right: 0;
+      height: 5px; background: linear-gradient(90deg, #2563eb, #4a9eff);
+      border-radius: 3px; opacity: 0.35;
+    }
+    .hero-sub { font-size: 1.05rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 32px; max-width: 540px; }
+
+    /* ============================================================
+       INPUT CARD
+    ============================================================ */
+    .input-card {
+      background: var(--white); border-radius: var(--radius-lg); padding: 26px;
+      box-shadow: var(--shadow-card); border: 1.5px solid var(--gray-border);
+      transition: box-shadow var(--transition);
+    }
+    .input-card:focus-within { box-shadow: var(--shadow-hover); border-color: var(--blue-light); }
+
+    .input-label { display: flex; align-items: center; gap: 7px; font-size: 0.88rem; font-weight: 600; color: var(--blue-dark); margin-bottom: 12px; }
+
+    .claim-input {
+      width: 100%; border: 1.5px solid var(--gray-border); border-radius: var(--radius-md);
+      padding: 14px 16px; font-family: var(--font-body); font-size: 1rem;
+      color: var(--text-main); resize: vertical; min-height: 108px; outline: none;
+      transition: border var(--transition), box-shadow var(--transition);
+      background: var(--gray-soft); line-height: 1.6;
+    }
+    .claim-input:focus { border-color: var(--blue-bright); background: var(--white); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    .claim-input::placeholder { color: #94a3b8; }
+
+    .input-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 12px; flex-wrap: wrap; }
+    .char-count { font-size: 0.8rem; color: var(--text-muted); }
+
+    .btn-check {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--blue-bright), var(--blue-mid));
+      color: var(--white); border: none; cursor: pointer;
+      padding: 12px 26px; border-radius: 50px;
+      font-family: var(--font-display); font-size: 0.95rem; font-weight: 700;
+      box-shadow: 0 4px 18px rgba(37,99,235,0.28); transition: all var(--transition);
+    }
+    .btn-check:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(37,99,235,0.38); }
+    .btn-check:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .examples { display: flex; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .examples-label { font-size: 0.82rem; color: var(--text-muted); font-weight: 500; }
+    .example-chip {
+      background: var(--white); border: 1.5px solid var(--gray-border);
+      color: var(--blue-dark); border-radius: 50px; padding: 6px 14px;
+      font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all var(--transition);
+    }
+    .example-chip:hover { border-color: var(--blue-bright); color: var(--blue-bright); background: var(--blue-pale); }
+
+    /* ============================================================
+       LOADING OVERLAY
+    ============================================================ */
+    .loading-overlay {
+      display: none; position: fixed; inset: 0; z-index: 150;
+      background: rgba(13,32,69,0.75); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .loading-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+
+    .loading-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      padding: 40px 44px; text-align: center; max-width: 380px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25); animation: slideUp 0.35s ease;
+    }
+    .spinner-ring {
+      width: 60px; height: 60px; border-radius: 50%;
+      border: 5px solid var(--blue-pale); border-top-color: var(--blue-bright);
+      animation: spin 0.85s linear infinite; margin: 0 auto 22px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-title { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--blue-deep); margin-bottom: 6px; }
+    .loading-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 22px; }
+
+    .loading-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    .load-step {
+      font-size: 0.86rem; color: var(--text-muted); padding: 8px 14px;
+      border-radius: var(--radius-sm); background: var(--gray-soft);
+      border-left: 3px solid var(--gray-border); transition: all 0.4s ease;
+    }
+    .load-step.active { background: var(--blue-pale); border-left-color: var(--blue-bright); color: var(--blue-dark); font-weight: 600; }
+    .load-step.done   { background: #dcfce7; border-left-color: var(--green); color: var(--green-dark); }
+
+    /* ============================================================
+       RESULTS
+    ============================================================ */
+    .results-section { padding: 96px 5% 80px; min-height: 100vh; animation: fadeUp 0.5s ease; }
+    .results-container { max-width: 740px; margin: 0 auto; }
+
+    .btn-back {
+      background: none; border: 1.5px solid var(--gray-border); color: var(--text-muted);
+      cursor: pointer; padding: 8px 20px; border-radius: 50px;
+      font-size: 0.88rem; font-weight: 500; margin-bottom: 24px; transition: all var(--transition);
+    }
+    .btn-back:hover { border-color: var(--blue-bright); color: var(--blue-bright); background: var(--blue-pale); }
+
+    .claim-reviewed { background: var(--white); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 18px; border: 1.5px solid var(--gray-border); }
+    .reviewed-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); display: block; margin-bottom: 5px; }
+    .claim-reviewed p { font-size: 0.98rem; color: var(--text-main); line-height: 1.6; font-style: italic; }
+
+    .verdict-card {
+      background: var(--white); border-radius: var(--radius-lg); padding: 28px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      margin-bottom: 16px; box-shadow: var(--shadow-card); border: 1.5px solid var(--gray-border); flex-wrap: wrap;
+    }
+    .verdict-left { display: flex; align-items: center; gap: 16px; }
+    .verdict-badge { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; flex-shrink: 0; }
+    .verdict-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 3px; }
+    .verdict-text  { font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; }
+
+    .score-circle { width: 112px; height: 112px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    .score-circle svg { position: absolute; top:0; left:0; width:100%; height:100%; transform: rotate(-90deg); }
+    .score-bg  { fill:none; stroke: var(--gray-border); stroke-width:8; }
+    .score-arc { fill:none; stroke-width:8; stroke-linecap:round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.4s ease; }
+    .score-number { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; color: var(--blue-deep); position: relative; z-index:1; line-height:1; }
+    .score-label  { font-size: 0.68rem; font-weight:600; text-transform:uppercase; letter-spacing:0.07em; color: var(--text-muted); position:relative; z-index:1; margin-top:2px; }
+
+    .info-card { background: var(--white); border-radius: var(--radius-lg); padding: 24px 26px; margin-bottom: 14px; box-shadow: var(--shadow-card); border: 1.5px solid var(--gray-border); }
+    .card-title { display:flex; align-items:center; gap:8px; font-family: var(--font-display); font-size:0.98rem; font-weight:700; color: var(--blue-dark); margin-bottom:12px; }
+    .card-body  { font-size: 0.96rem; color: var(--text-main); line-height:1.75; }
+
+    .sources-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .source-item  { display:flex; align-items:flex-start; gap:9px; font-size:0.9rem; color: var(--text-muted); padding:9px 12px; background: var(--gray-soft); border-radius: var(--radius-sm); border-left:3px solid var(--blue-light); }
+    .source-num   { font-weight:700; color: var(--blue-bright); flex-shrink:0; }
+
+    .disclaimer { font-size:0.78rem; color: var(--text-muted); text-align:center; margin-top:20px; padding:12px; background:#fffbeb; border-radius: var(--radius-sm); border:1px solid #fde68a; }
+
+    /* ============================================================
+       HOW IT WORKS
+    ============================================================ */
+    .how-section { padding: 80px 5%; background: var(--white); border-top: 1px solid var(--gray-border); }
+    .how-container { max-width: 860px; margin: 0 auto; text-align: center; }
+    .section-title { font-family: var(--font-display); font-size: clamp(1.7rem, 3vw, 2.3rem); font-weight:800; color: var(--blue-deep); margin-bottom:10px; }
+    .section-sub   { color: var(--text-muted); margin-bottom:44px; font-size:1.02rem; }
+
+    .steps-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:20px; }
+    .step-card {
+      background: var(--blue-bg); border-radius: var(--radius-lg); padding:28px 22px;
+      border:1.5px solid var(--gray-border); transition: transform var(--transition), box-shadow var(--transition);
+      text-align:left; position:relative; overflow:hidden;
+    }
+    .step-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); border-color: var(--blue-light); }
+    .step-num  { font-family: var(--font-display); font-size:2.4rem; font-weight:800; color: var(--blue-pale); position:absolute; top:14px; right:18px; }
+    .step-icon { font-size:1.9rem; margin-bottom:14px; }
+    .step-card h4 { font-family: var(--font-display); font-size:1rem; font-weight:700; color: var(--blue-deep); margin-bottom:7px; }
+    .step-card p  { font-size:0.88rem; color: var(--text-muted); line-height:1.6; }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    .footer { background: var(--blue-deep); padding:36px 5%; }
+    .footer-inner { max-width:860px; margin:0 auto; text-align:center; }
+    .footer .logo-truth { color: var(--white); }
+    .footer .logo-lens  { color: #4caf50; }
+    .footer-tagline { font-size:0.88rem; color:#94a3b8; margin:8px 0 4px; }
+    .footer-copy    { font-size:0.76rem; color:#64748b; }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 560px) {
+      .hero { padding-top: 90px; }
+      .verdict-card { flex-direction: column; align-items: flex-start; }
+      .score-circle { align-self: center; }
+      .loading-card { padding: 28px 20px; }
+      .modal { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 38 38" fill="none">
+        <circle cx="16" cy="16" r="13" fill="#1a3a6e" stroke="white" stroke-width="3.5"/>
+        <circle cx="16" cy="16" r="9" fill="#1e4d99" stroke="#4a9eff" stroke-width="1.5"/>
+        <polyline points="10,16 14,20 22,11" stroke="#4caf50" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="26" y1="26" x2="33" y2="33" stroke="#4a9eff" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-truth">Truth</span><span class="logo-lens">Lens</span>
+    </div>
+    <!-- Click to set / change API key -->
+    <div class="api-status" onclick="openModal()">
+      <div class="api-dot" id="apiDot"></div>
+      <span id="apiStatusText">Add API Key</span>
+    </div>
+  </header>
+
+  <!-- ===== API KEY MODAL ===== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2>🔑 Enter your API Key</h2>
+      <p>
+        TruthLens uses the Claude API to analyze claims.<br>
+        Get your free key at <strong>console.anthropic.com</strong> → API Keys.
+        Your key is stored only in your browser — never sent anywhere else.
+      </p>
+      <input
+        type="password"
+        class="modal-input"
+        id="apiKeyInput"
+        placeholder="sk-ant-api03-..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <p class="modal-hint">⚠️ Keep your key private. Never share it with others.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save"   onclick="saveApiKey()">Save & Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HERO ===== -->
+  <main>
+    <section class="hero" id="heroSection">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dot"></span> AI-Powered Fact Checking
+        </div>
+        <h1 class="hero-title">
+          See the <span class="highlight">truth</span><br>behind every claim.
+        </h1>
+        <p class="hero-sub">
+          Paste any statement, headline, or rumor below. TruthLens uses Claude AI to
+          evaluate evidence, assign a truth score, and explain its verdict in seconds.
+        </p>
+
+        <div class="input-card">
+          <label class="input-label" for="claimInput">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Enter a claim to verify
+          </label>
+          <textarea
+            id="claimInput"
+            class="claim-input"
+            placeholder="e.g. 'The Great Wall of China is visible from space.' or paste any headline…"
+            rows="4"
+          ></textarea>
+          <div class="input-footer">
+            <span class="char-count" id="charCount">0 / 500 characters</span>
+            <button class="btn-check" id="checkBtn" onclick="checkTruth()">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Check Truth
+            </button>
+          </div>
+        </div>
+
+        <div class="examples">
+          <span class="examples-label">Try an example:</span>
+          <button class="example-chip" onclick="fillExample('Humans only use 10% of their brain.')">🧠 Brain myth</button>
+          <button class="example-chip" onclick="fillExample('Lightning never strikes the same place twice.')">⚡ Lightning</button>
+          <button class="example-chip" onclick="fillExample('Vaccines cause autism.')">💉 Vaccines</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LOADING ===== -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-card">
+        <div class="spinner-ring"></div>
+        <p class="loading-title">Analyzing claim…</p>
+        <p class="loading-sub">Searching evidence · Evaluating · Generating verdict</p>
+        <div class="loading-steps">
+          <div class="load-step active" id="lstep1">🔍 Reading claim</div>
+          <div class="load-step"        id="lstep2">📡 Searching evidence</div>
+          <div class="load-step"        id="lstep3">⚖️ Generating verdict</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RESULTS ===== -->
+    <section class="results-section" id="resultsSection" style="display:none;">
+      <div class="results-container">
+        <button class="btn-back" onclick="resetToHome()">← Check another claim</button>
+
+        <div class="claim-reviewed">
+          <span class="reviewed-label">Claim reviewed</span>
+          <p id="claimReviewed"></p>
+        </div>
+
+        <div class="verdict-card" id="verdictCard">
+          <div class="verdict-left">
+            <div class="verdict-badge" id="verdictBadge"><span id="verdictIcon">✓</span></div>
+            <div>
+              <div class="verdict-label">Verdict</div>
+              <div class="verdict-text" id="verdictText">TRUE</div>
+            </div>
+          </div>
+          <div class="score-section">
+            <div class="score-circle">
+              <svg viewBox="0 0 120 120">
+                <circle class="score-bg"  cx="60" cy="60" r="50"/>
+                <circle class="score-arc" id="scoreArc" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="score-number" id="scoreNumber">0</div>
+              <div class="score-label">Truth Score</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h3 class="card-title">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Explanation
+          </h3>
+          <p id="explanationText" class="card-body"></p>
+        </div>
+
+        <div class="info-card" id="sourcesCard">
+          <h3 class="card-title">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Sources & References
+          </h3>
+          <ul id="sourcesList" class="sources-list"></ul>
+        </div>
+
+        <p class="disclaimer">⚠️ TruthLens uses AI and may not be 100% accurate. Always verify important claims with trusted primary sources.</p>
+      </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS ===== -->
+    <section class="how-section" id="howSection">
+      <div class="how-container">
+        <h2 class="section-title">How TruthLens works</h2>
+        <p class="section-sub">Three steps to a clear, evidence-backed verdict.</p>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-num">01</div>
+            <div class="step-icon">📝</div>
+            <h4>Submit a Claim</h4>
+            <p>Paste any statement, headline, or rumor into the input box.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">02</div>
+            <div class="step-icon">🤖</div>
+            <h4>AI Analysis</h4>
+            <p>Claude AI cross-references its knowledge and evaluates credibility.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">03</div>
+            <div class="step-icon">✅</div>
+            <h4>Get Your Verdict</h4>
+            <p>Receive a truth score, clear verdict, explanation, and sources.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="logo" style="justify-content:center;">
+        <svg width="24" height="24" viewBox="0 0 38 38" fill="none">
+          <circle cx="16" cy="16" r="13" fill="#1a3a6e" stroke="white" stroke-width="3.5"/>
+          <circle cx="16" cy="16" r="9" fill="#1e4d99" stroke="#4a9eff" stroke-width="1.5"/>
+          <polyline points="10,16 14,20 22,11" stroke="#4caf50" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="26" y1="26" x2="33" y2="33" stroke="#4a9eff" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-truth">Truth</span><span class="logo-lens">Lens</span>
+      </div>
+      <p class="footer-tagline">See the truth behind every claim.</p>
+      <p class="footer-copy">© 2026 TruthLens. For educational purposes only.</p>
+    </div>
+  </footer>
+
+  <script>
+    // ============================================================
+    //  TruthLens – All-in-one browser script
+    //  Calls Claude API directly. No backend needed.
+    // ============================================================
+
+    // ---- API Key management (stored in sessionStorage) ----
+    // sessionStorage clears when the browser tab is closed — safer than localStorage
+
+    function getApiKey() {
+      return sessionStorage.getItem("tl_api_key") || "";
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById("apiKeyInput").value.trim();
+      if (!key) { alert("Please enter your API key."); return; }
+      if (!key.startsWith("sk-ant")) {
+        alert("That doesn't look like a valid Claude API key.\nIt should start with: sk-ant-");
+        return;
+      }
+      sessionStorage.setItem("tl_api_key", key);
+      updateApiStatus(true);
+      closeModal();
+    }
+
+    function updateApiStatus(connected) {
+      const dot  = document.getElementById("apiDot");
+      const text = document.getElementById("apiStatusText");
+      if (connected) {
+        dot.classList.add("connected");
+        text.textContent = "API Key ✓";
+      } else {
+        dot.classList.remove("connected");
+        text.textContent = "Add API Key";
+      }
+    }
+
+    function openModal() {
+      document.getElementById("modalOverlay").classList.add("active");
+      // Pre-fill if already set
+      const existing = getApiKey();
+      if (existing) document.getElementById("apiKeyInput").value = existing;
+      setTimeout(() => document.getElementById("apiKeyInput").focus(), 100);
+    }
+
+    function closeModal() {
+      document.getElementById("modalOverlay").classList.remove("active");
+    }
+
+    // Close modal on backdrop click
+    document.getElementById("modalOverlay").addEventListener("click", function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // On load: check if key is already saved
+    window.addEventListener("load", () => {
+      if (getApiKey()) updateApiStatus(true);
+    });
+
+    // ---- Character counter ----
+    const claimInput = document.getElementById("claimInput");
+    const charCount  = document.getElementById("charCount");
+
+    claimInput.addEventListener("input", () => {
+      const len = claimInput.value.length;
+      charCount.textContent = `${len} / 500 characters`;
+      charCount.style.color = len > 450 ? "#ef4444" : "#64748b";
+      if (len > 500) claimInput.value = claimInput.value.slice(0, 500);
+    });
+
+    // ---- Example claims ----
+    function fillExample(text) {
+      claimInput.value = text;
+      claimInput.dispatchEvent(new Event("input"));
+      claimInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      claimInput.focus();
+    }
+
+    // ---- Loading animation ----
+    let stepTimer = null;
+
+    function startLoadingAnimation() {
+      ["lstep1","lstep2","lstep3"].forEach(id => {
+        document.getElementById(id).classList.remove("active","done");
+      });
+      document.getElementById("lstep1").classList.add("active");
+      let current = 1;
+      stepTimer = setInterval(() => {
+        if (current >= 3) { clearInterval(stepTimer); return; }
+        document.getElementById(`lstep${current}`).classList.replace("active","done");
+        current++;
+        document.getElementById(`lstep${current}`).classList.add("active");
+      }, 1300);
+    }
+
+    function stopLoadingAnimation() {
+      clearInterval(stepTimer);
+      ["lstep1","lstep2","lstep3"].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove("active");
+        el.classList.add("done");
+      });
+    }
+
+    function showLoading() {
+      document.getElementById("loadingOverlay").classList.add("active");
+      startLoadingAnimation();
+    }
+
+    function hideLoading() {
+      document.getElementById("loadingOverlay").classList.remove("active");
+      stopLoadingAnimation();
+    }
+
+    // ---- Verdict styles ----
+    const VERDICT_STYLES = {
+      "True":                  { color:"#22c55e", bg:"#dcfce7", icon:"✅", arc:"#22c55e" },
+      "False":                 { color:"#ef4444", bg:"#fee2e2", icon:"❌", arc:"#ef4444" },
+      "Misleading":            { color:"#f59e0b", bg:"#fef3c7", icon:"⚠️", arc:"#f59e0b" },
+      "Not enough evidence":   { color:"#6b7280", bg:"#f3f4f6", icon:"❓", arc:"#94a3b8" }
+    };
+
+    function animateScore(target) {
+      const el = document.getElementById("scoreNumber");
+      let current = 0;
+      const steps = 60, delay = 1200 / steps, inc = target / steps;
+      const t = setInterval(() => {
+        current += inc;
+        if (current >= target) { current = target; clearInterval(t); }
+        el.textContent = Math.round(current);
+      }, delay);
+    }
+
+    function animateArc(score, color) {
+      const arc = document.getElementById("scoreArc");
+      arc.style.stroke = color;
+      setTimeout(() => {
+        arc.style.strokeDashoffset = 314 - (score / 100) * 314;
+      }, 100);
+    }
+
+    // ---- Render results ----
+    function renderResults(data, claim) {
+      document.getElementById("heroSection").style.display    = "none";
+      document.getElementById("howSection").style.display     = "none";
+      document.getElementById("resultsSection").style.display = "block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      document.getElementById("claimReviewed").textContent = `"${claim}"`;
+
+      const raw     = (data.verdict || "Not enough evidence");
+      const verdict = raw.charAt(0).toUpperCase() + raw.slice(1);
+      const style   = VERDICT_STYLES[verdict] || VERDICT_STYLES["Not enough evidence"];
+
+      document.getElementById("verdictBadge").style.background = style.bg;
+      document.getElementById("verdictIcon").textContent        = style.icon;
+      document.getElementById("verdictText").textContent        = verdict;
+      document.getElementById("verdictText").style.color        = style.color;
+
+      const score = Math.min(100, Math.max(0, parseInt(data.truth_score) || 50));
+      animateScore(score);
+      animateArc(score, style.arc);
+
+      document.getElementById("explanationText").textContent = data.explanation || "No explanation provided.";
+
+      const list = document.getElementById("sourcesList");
+      list.innerHTML = "";
+      const sources = data.sources && data.sources.length ? data.sources : ["No specific sources identified."];
+      sources.forEach((src, i) => {
+        const li = document.createElement("li");
+        li.className = "source-item";
+        li.innerHTML = `<span class="source-num">${i+1}.</span><span>${src}</span>`;
+        list.appendChild(li);
+      });
+    }
+
+    // ---- Reset to home ----
+    function resetToHome() {
+      document.getElementById("heroSection").style.display    = "flex";
+      document.getElementById("howSection").style.display     = "block";
+      document.getElementById("resultsSection").style.display = "none";
+      document.getElementById("checkBtn").disabled = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // ---- Main: Call Claude API ----
+    async function checkTruth() {
+      const claim = claimInput.value.trim();
+
+      // Validate claim
+      if (!claim || claim.length < 5) {
+        claimInput.style.borderColor = "#ef4444";
+        claimInput.style.boxShadow   = "0 0 0 3px rgba(239,68,68,0.15)";
+        setTimeout(() => { claimInput.style.borderColor = ""; claimInput.style.boxShadow = ""; }, 2000);
+        claimInput.focus();
+        return;
+      }
+
+      // Check API key
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        openModal();
+        return;
+      }
+
+      document.getElementById("checkBtn").disabled = true;
+      showLoading();
+
+      // The prompt tells Claude to return JSON only
+      const prompt = `You are a professional fact-checker. A user has submitted this claim:
+"${claim}"
+
+Evaluate it carefully and respond with ONLY a valid JSON object — no markdown, no extra text.
+
+Required format:
+{
+  "truth_score": <integer 0-100>,
+  "verdict": "<True | False | Misleading | Not enough evidence>",
+  "explanation": "<2-4 sentences explaining your verdict>",
+  "sources": ["<source 1>", "<source 2 optional>"]
+}
+
+Rules:
+- truth_score: 0 = completely false, 100 = completely true
+- verdict must be exactly one of the four options
+- explanation: factual, neutral, beginner-friendly
+- sources: credible institutions or publications (e.g. "NASA", "WHO 2023 report")
+- If unsure, use "Not enough evidence" with score 50
+- Return ONLY the JSON object, nothing else`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type":         "application/json",
+            "x-api-key":            apiKey,
+            "anthropic-version":    "2023-06-01",
+            // Required for browser-based calls
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
+          body: JSON.stringify({
+            model:      "claude-sonnet-4-20250514",
+            max_tokens: 600,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          if (response.status === 401) throw new Error("Invalid API key. Please check and re-enter it.");
+          if (response.status === 429) throw new Error("Rate limit reached. Please wait a moment and try again.");
+          throw new Error(err.error?.message || `API error ${response.status}`);
+        }
+
+        const data    = await response.json();
+        const rawText = data.content?.[0]?.text?.trim() || "";
+
+        // Strip markdown fences if present
+        const clean = rawText.replace(/```json|```/g, "").trim();
+
+        let result;
+        try {
+          result = JSON.parse(clean);
+        } catch {
+          throw new Error("AI returned an unexpected format. Please try again.");
+        }
+
+        // Sanitize fields
+        if (!result.truth_score) result.truth_score = 50;
+        if (!result.verdict)     result.verdict      = "Not enough evidence";
+        if (!result.explanation) result.explanation  = "No explanation provided.";
+        if (!Array.isArray(result.sources)) result.sources = [];
+        result.truth_score = Math.min(100, Math.max(0, parseInt(result.truth_score)));
+
+        await new Promise(r => setTimeout(r, 500)); // brief pause for UX
+        hideLoading();
+        renderResults(result, claim);
+
+      } catch (error) {
+        hideLoading();
+        document.getElementById("checkBtn").disabled = false;
+        alert(`Error: ${error.message}`);
+        console.error("TruthLens error:", error);
+      }
+    }
+
+    // Ctrl+Enter / Cmd+Enter shortcut
+    claimInput.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") checkTruth();
+    });
+  </script>
+</body>
+</html>
